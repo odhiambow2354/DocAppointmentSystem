@@ -27,7 +27,7 @@ const Contacts = () => {
             Keep updated on our teams and job openings
           </p>
           <button className="border border-black px-8 py-4 text-sm hover:bg-black hover:text-white transition-all duration-500">
-            Explore Jos
+            Explore Jobs
           </button>
         </div>
       </div>
