@@ -1,28 +1,33 @@
 import jwt from "jsonwebtoken";
 
-//admin auth middleware
+// Admin auth middleware
 const authAdmin = async (req, res, next) => {
   try {
-    //get the token from the header if present
-    const { adminToken } = req.headers;
+    const authHeader = req.headers.authorization;
 
-    //if no token found
-    if (!adminToken) {
+    // Check if authorization header exists and starts with 'Bearer '
+    if (!authHeader || !authHeader.startsWith("Bearer ")) {
       return res.json({ success: false, message: "Access Denied" });
     }
 
-    //verify the token
-    const token_decoded = jwt.verify(adminToken, process.env.JWT_SECRET);
+    // Extract the token part after "Bearer "
+    const token = authHeader.split(" ")[1];
+
+    // Verify the token
+    const token_decoded = jwt.verify(token, process.env.JWT_SECRET);
+
+    // Check if decoded token matches admin credentials
     if (
-      token_decoded !==
-      process.env.ADMIN_EMAIL + process.env.ADMIN_PASSWORD
+      token_decoded.email !== process.env.ADMIN_EMAIL ||
+      token_decoded.password !== process.env.ADMIN_PASSWORD
     ) {
       return res.json({ success: false, message: "Invalid token" });
     }
 
+    // Proceed to next middleware if token is valid
     next();
   } catch (error) {
-    console.log(error);
+    console.error("Error in authAdmin middleware:", error);
     return res.json({ success: false, message: error.message });
   }
 };
