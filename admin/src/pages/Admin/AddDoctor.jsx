@@ -210,7 +210,7 @@ const AddDoctor = () => {
                 value={address2}
                 className="border rounded px-3 py-2"
                 type="text"
-                placeholder="Address 1"
+                placeholder="Address 2"
                 required
               />
             </div>
