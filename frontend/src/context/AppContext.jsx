@@ -18,11 +18,29 @@ const AppContextProvider = (props) => {
   );
   const [doctors, setDoctors] = useState([]);
 
+  const [userData, setUserData] = useState(null);
+
   const getDoctorsData = async () => {
     try {
       const { data } = await axios.get(backendUrl + "/api/doctor/list");
       if (data.success) {
         setDoctors(data.doctors);
+      } else {
+        toast.error(data.message);
+      }
+    } catch (error) {
+      console.log(error);
+      toast.error(error.message);
+    }
+  };
+
+  const loadUserProfileData = async () => {
+    try {
+      const { data } = await axios.get(backendUrl + "/api/user/get-profile", {
+        headers: { Authorization: `Bearer ${token}` },
+      });
+      if (data.success) {
+        setUserData(data.userData);
       } else {
         toast.error(data.message);
       }
@@ -38,11 +56,22 @@ const AppContextProvider = (props) => {
     token,
     setToken,
     backendUrl,
+    userData,
+    setUserData,
+    loadUserProfileData,
   };
 
   useEffect(() => {
     getDoctorsData();
   }, []);
+
+  useEffect(() => {
+    if (token) {
+      loadUserProfileData();
+    } else {
+      setUserData(false);
+    }
+  }, [token]);
 
   return (
     <AppContext.Provider value={value}>{props.children}</AppContext.Provider>
