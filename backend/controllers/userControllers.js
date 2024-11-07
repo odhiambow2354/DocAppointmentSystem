@@ -214,6 +214,8 @@ const cancelAppointment = async (req, res) => {
   }
 };
 
+// API for making payment using M-Pesa
+
 export {
   registerUser,
   loginUser,
