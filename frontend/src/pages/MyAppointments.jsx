@@ -71,6 +71,22 @@ const MyAppointments = () => {
     }
   };
 
+  const mpesaPayment = async (appointmentId) => {
+    try {
+      const { data } = await axios.post(
+        backendUrl + "/api/user/initiate-payment",
+        { appointmentId },
+        { headers: { Authorization: `Bearer ${token}` } }
+      );
+      if (data.success) {
+        console.log(data.orderData);
+      }
+    } catch (error) {
+      console.log(error);
+      toast.error(error.message);
+    }
+  };
+
   useEffect(() => {
     if (token) {
       getUserAppointments();
