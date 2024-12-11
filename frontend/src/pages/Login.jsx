@@ -6,25 +6,39 @@ import axios from "axios";
 import { toast } from "react-toastify";
 import { useNavigate } from "react-router-dom";
 
+// Helper function to validate Safaricom phone numbers
+const isValidSafaricomNumber = (phone) => {
+  const safaricomRegex = /^(?:\+254|0)7\d{8}$/; // Matches +2547XXXXXXXX or 07XXXXXXXX
+  return safaricomRegex.test(phone);
+};
+
 const Login = () => {
   const { backendUrl, token, setToken } = useContext(AppContext);
-
   const navigate = useNavigate();
 
   const [state, setState] = useState("Sign Up");
-
   const [email, setEmail] = useState("");
   const [password, setPassword] = useState("");
   const [name, setName] = useState("");
+  const [phone, setPhone] = useState("");
 
   const onSubmitHandler = async (event) => {
     event.preventDefault();
 
     try {
       if (state === "Sign Up") {
+        // Validate phone number
+        if (!isValidSafaricomNumber(phone)) {
+          toast.error(
+            "Invalid Safaricom phone number. Use format +2547XXXXXXXX or 07XXXXXXXX."
+          );
+          return;
+        }
+
         const { data } = await axios.post(backendUrl + "/api/user/register", {
           name,
           email,
+          phone,
           password,
         });
         if (data.success) {
@@ -63,28 +77,45 @@ const Login = () => {
           {state === "Sign Up" ? "Create Account" : "Login"}
         </p>
         <p>
-          Please {state === "Sign Up" ? "sign up" : "Login"} to book appointment
+          Please {state === "Sign Up" ? "sign up" : "Login"} to book an
+          appointment
         </p>
         {state === "Sign Up" && (
-          <div className="w-full">
-            <p>Full Name</p>
-            <input
-              className="border border-zinc-300 rounded w-full p-2 mt-1"
-              type="text"
-              onChange={(e) => setName(e.target.value)}
-              value={name}
-            />
-          </div>
+          <>
+            <div className="w-full">
+              <p>Full Name</p>
+              <input
+                className="border border-zinc-300 rounded w-full p-2 mt-1"
+                type="text"
+                onChange={(e) => setName(e.target.value)}
+                value={name}
+                required
+              />
+            </div>
+            <div className="w-full">
+              <p>Email</p>
+              <input
+                className="border border-zinc-300 rounded w-full p-2 mt-1"
+                type="email"
+                onChange={(e) => setEmail(e.target.value)}
+                value={email}
+                required
+              />
+            </div>
+
+            <div className="w-full">
+              <p>Phone Number</p>
+              <input
+                className="border border-zinc-300 rounded w-full p-2 mt-1"
+                type="tel"
+                onChange={(e) => setPhone(e.target.value)}
+                value={phone}
+                placeholder="e.g. +254722222222 or 0722222222"
+                required
+              />
+            </div>
+          </>
         )}
-        <div className="w-full">
-          <p>Email</p>
-          <input
-            className="border border-zinc-300 rounded w-full p-2 mt-1"
-            type="email"
-            onChange={(e) => setEmail(e.target.value)}
-            value={email}
-          />
-        </div>
         <div className="w-full">
           <p>Password</p>
           <input
@@ -92,6 +123,7 @@ const Login = () => {
             type="password"
             onChange={(e) => setPassword(e.target.value)}
             value={password}
+            required
           />
         </div>
         <button
@@ -112,12 +144,12 @@ const Login = () => {
           </p>
         ) : (
           <p>
-            Create account?
+            Create account?{" "}
             <span
               onClick={() => setState("Sign Up")}
               className="text-primary underline cursor-pointer"
             >
-              click here
+              Click here
             </span>
           </p>
         )}

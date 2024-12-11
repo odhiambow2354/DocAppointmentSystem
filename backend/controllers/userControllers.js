@@ -5,13 +5,14 @@ import jwt from "jsonwebtoken";
 import { v2 as cloudinary } from "cloudinary";
 import doctorModel from "../models/doctorModel.js";
 import appointmentModel from "../models/appointmentModel.js";
+import { getToken, stkPush } from "./mpesaController.js";
 
 //API to register user
 const registerUser = async (req, res) => {
   try {
-    const { name, email, password } = req.body;
+    const { name, email, password, phone } = req.body;
 
-    if (!name || !email || !password) {
+    if (!name || !email || !phone || !password) {
       return res.json({ success: false, message: "Please enter all fields" });
     }
     if (!validator.isEmail(email)) {
@@ -28,6 +29,7 @@ const registerUser = async (req, res) => {
     const userData = {
       name,
       email,
+      phone,
       password: hashedPassword,
     };
 
@@ -213,131 +215,45 @@ const cancelAppointment = async (req, res) => {
     res.json({ success: false, message: error.message });
   }
 };
-
-// API  for making payment using mpesa
-
-let token; // Global variable for token
-
-// Generate Token Middleware
-const getToken = async (req, res, next) => {
-  const secret =
-    "Y0uaCAAPwwTsGtLHQi8pGPDjM2A5WQX7EcxcjlIfcIA05yRnt0ezftTKOFM9wuGC";
-  const consumer = "lexOJoA1VBpYru6GpdIsd4KHJhOXE0kyW7fX1eJa2aEMP3kw";
-  const auth = Buffer.from(`${consumer}:${secret}`).toString("base64");
-
+//mpesa appointment payment
+const payAppointment = async (req, res) => {
   try {
-    const response = await axios.get(
-      "https://sandbox.safaricom.co.ke/oauth/v1/generate?grant_type=client_credentials",
-      {
-        headers: {
-          Authorization: `Basic ${auth}`,
-        },
-      }
-    );
-    token = response.data.access_token;
-    console.log("Access token:", token);
-    next();
-  } catch (error) {
-    console.error("Error fetching token:", error.message);
-    res.status(500).json({ error: "Failed to retrieve access token" });
-  }
-};
+    const { appointmentId, phoneNumber } = req.body;
 
-// STK Push Function
-const stkPush = async (req, res) => {
-  if (!token) {
-    return res.status(400).json({ error: "Token not available" });
-  }
-
-  const shortCode = 174379;
-  const phone = req.body.phone?.substring(1); // Ensure the phone number is valid
-  const amount = req.body.amount;
-  const passKey =
-    "bfb279f9aa9bdbcf158e97dd71a467cd2e0c893059b10f78e6b72ada1ed2c919";
-  const url = "https://sandbox.safaricom.co.ke/mpesa/stkpush/v1/processrequest";
-
-  const date = new Date();
-  const timestamp = `${date.getFullYear()}${String(
-    date.getMonth() + 1
-  ).padStart(2, "0")}${String(date.getDate()).padStart(2, "0")}${String(
-    date.getHours()
-  ).padStart(2, "0")}${String(date.getMinutes()).padStart(2, "0")}${String(
-    date.getSeconds()
-  ).padStart(2, "0")}`;
-  const password = Buffer.from(`${shortCode}${passKey}${timestamp}`).toString(
-    "base64"
-  );
-
-  const data = {
-    BusinessShortCode: shortCode,
-    Password: password,
-    Timestamp: timestamp,
-    TransactionType: "CustomerPayBillOnline",
-    Amount: amount,
-    PartyA: `254${phone}`,
-    PartyB: shortCode,
-    PhoneNumber: `254${phone}`,
-    CallBackURL: "https://yourdomain.com/api/payment/callback",
-    AccountReference: "Test",
-    TransactionDesc: "Test Transaction",
-  };
-
-  try {
-    const response = await axios.post(url, data, {
-      headers: {
-        Authorization: `Bearer ${token}`,
-      },
-    });
-    console.log("STK Push Response:", response.data);
-    res
-      .status(200)
-      .json({ message: "STK Push Initiated", data: response.data });
-  } catch (error) {
-    console.error("Error in STK Push:", error.message);
-    res.status(400).json({ error: "STK Push request failed" });
-  }
-};
-
-// Handle M-Pesa callback from Safaricom
-const mpesaCallback = (req, res) => {
-  const result = req.body.Body?.stkCallback;
-  console.log("STK Callback Result:", result);
-
-  if (result?.ResultCode === 0) {
-    console.log("Payment Successful");
-  } else {
-    console.log(
-      "Payment Failed or Cancelled:",
-      result?.ResultDesc || "Unknown error"
-    );
-  }
-
-  res.status(200).json({ message: "Callback received" });
-};
-
-// API for making payment using M-Pesa
-const initiatePayment = async (req, res) => {
-  try {
-    const { userId, appointmentId } = req.body;
-    const appointmentData = await appointmentModel.findById(appointmentId);
-
-    if (appointmentData.userId !== userId) {
-      return res.json({ success: false, message: "Unauthorized access" });
+    // Validate input
+    if (!appointmentId || !phoneNumber) {
+      return res.status(400).json({
+        success: false,
+        message: "Appointment ID and phone number are required.",
+      });
     }
 
-    const { amount, phone } = appointmentData;
+    // Fetch the appointment details
+    const appointment = await appointmentModel.findById(appointmentId);
 
-    // Preparing data for STK Push
-    const stkPushData = {
-      amount,
-      phone,
-    };
+    if (!appointment || appointment.cancelled) {
+      return res.status(404).json({
+        success: false,
+        message: "Appointment not found or has been cancelled.",
+      });
+    }
 
-    // Calling STK Push function to initiate the payment
-    await stkPush(req, res);
+    // Attach required data to the request body for M-Pesa
+    req.body.phone = phoneNumber; // Include the phone number
+    req.body.amount = appointment.amount; // Set the payment amount
+
+    // Use the getToken middleware to fetch an access token
+    await getToken(req, res, async () => {
+      // Initiate the STK push using the token and other details
+      await stkPush(req, res);
+    });
   } catch (error) {
-    console.log(error);
-    res.json({ success: false, message: error.message });
+    console.error("Error during payment initiation:", error.message);
+    res.status(500).json({
+      success: false,
+      message: "An error occurred while processing the payment.",
+      details: error.message,
+    });
   }
 };
 
@@ -349,5 +265,5 @@ export {
   bookAppointment,
   listAppointment,
   cancelAppointment,
-  initiatePayment,
+  payAppointment,
 };

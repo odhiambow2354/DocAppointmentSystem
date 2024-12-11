@@ -1,13 +1,24 @@
-/* eslint-disable no-undef */
 /* eslint-disable no-unused-vars */
 import React, { useContext, useState, useEffect } from "react";
 import { AppContext } from "../context/AppContext";
 import axios from "axios";
 import { toast } from "react-toastify";
+
+// Spinner component with rotating effect
+const Spinner = () => (
+  <div className="flex justify-center items-center space-x-2">
+    <div className="w-16 h-16 border-8 border-t-8 border-primary border-solid rounded-full animate-spin"></div>
+    <span className="text-lg">Enter your M-Pesa PIN</span>
+  </div>
+);
+
 const MyAppointments = () => {
-  const { backendUrl, token, getDoctorsData } = useContext(AppContext);
+  const { backendUrl, token, getDoctorsData, userData } =
+    useContext(AppContext); // Ensure userData is available in context
 
   const [appointments, setAppointments] = useState([]);
+  const [loadingAppointmentId, setLoadingAppointmentId] = useState(null); // Track loading state per appointment
+  const [showSpinner, setShowSpinner] = useState(false); // Show/Hide the spinner
   const months = [
     "",
     "Jan",
@@ -23,6 +34,7 @@ const MyAppointments = () => {
     "Nov",
     "Dec",
   ];
+
   const slotDateFormat = (slotDate) => {
     const dateArray = slotDate.split("/");
     return (
@@ -38,7 +50,6 @@ const MyAppointments = () => {
 
       if (data.success) {
         setAppointments(data.appointments.reverse());
-        console.log(data.appointments);
       }
     } catch (error) {
       console.log(error);
@@ -46,10 +57,9 @@ const MyAppointments = () => {
     }
   };
 
-  //cancel appointment
+  // Cancel appointment
   const cancelAppointment = async (appointmentId) => {
     try {
-      console.log(appointmentId);
       const { data } = await axios.post(
         backendUrl + "/api/user/cancel-appointment",
         { appointmentId },
@@ -71,19 +81,47 @@ const MyAppointments = () => {
     }
   };
 
-  const mpesaPayment = async (appointmentId) => {
+  // Handle payment
+  const appointmentPayment = async (appointmentId) => {
+    setLoadingAppointmentId(appointmentId); // Set loading for the current appointment
+    setShowSpinner(true); // Show the spinner
+
     try {
+      // Check if phone number exists in userData
+      const phoneNumber = userData?.phone;
+
+      if (!phoneNumber) {
+        toast.error("No phone number found.");
+        setLoadingAppointmentId(null); // Reset loading
+        setShowSpinner(false); // Hide spinner
+        return;
+      }
+
       const { data } = await axios.post(
-        backendUrl + "/api/user/initiate-payment",
-        { appointmentId },
-        { headers: { Authorization: `Bearer ${token}` } }
+        backendUrl + "/api/user/pay-appointment",
+        { appointmentId, phoneNumber }, // Send the phone number from userData
+        {
+          headers: {
+            Authorization: `Bearer ${token}`,
+          },
+        }
       );
+
       if (data.success) {
-        console.log(data.orderData);
+        toast.success("Payment initiated successfully!");
+      } else {
+        toast.error(data.message || "Payment initiation failed.");
       }
     } catch (error) {
-      console.log(error);
-      toast.error(error.message);
+      console.error("Error initiating payment:", error);
+      toast.error(
+        error.response?.data?.message ||
+          "An error occurred while initiating the payment."
+      );
+    } finally {
+      setTimeout(() => {
+        setShowSpinner(false); // Hide spinner after 25 seconds
+      }, 25000); // 25 seconds delay
     }
   };
 
@@ -124,7 +162,7 @@ const MyAppointments = () => {
             <div className="flex flex-col gap-2 justify-end">
               {!item.cancelled && (
                 <button
-                  onClick={() => mpesaPayment(item._id)}
+                  onClick={() => appointmentPayment(item._id)}
                   className="text-sm text-stone-500 text-center sm:min-w-48 py-2 border rounded hover:bg-primary hover:text-white transition-all duration-300"
                 >
                   Pay Online
@@ -147,6 +185,13 @@ const MyAppointments = () => {
           </div>
         ))}
       </div>
+
+      {/* Spinner Overlay */}
+      {showSpinner && (
+        <div className="fixed inset-0 flex items-center justify-center bg-gray-500 bg-opacity-50 z-50">
+          <div className="w-16 h-16 border-8 border-t-8 border-primary border-solid rounded-full animate-spin"></div>
+        </div>
+      )}
     </div>
   );
 };

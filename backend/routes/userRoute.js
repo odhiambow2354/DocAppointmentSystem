@@ -7,8 +7,14 @@ import {
   bookAppointment,
   listAppointment,
   cancelAppointment,
-  initiatePayment,
+  payAppointment,
 } from "../controllers/userControllers.js";
+import {
+  getToken,
+  stkPush,
+  mpesaCallback,
+  pollTransactionStatus,
+} from "../controllers/mpesaController.js";
 import authUser from "../middlewares/authUser.js";
 import upload from "../middlewares/multer.js";
 
@@ -27,8 +33,16 @@ userRouter.post(
 userRouter.post("/book-appointment", authUser, bookAppointment);
 userRouter.get("/appointments", authUser, listAppointment);
 userRouter.post("/cancel-appointment", authUser, cancelAppointment);
+userRouter.post("/pay-appointment", authUser, payAppointment);
 
-// Endpoint to initiate M-Pesa payment
-userRouter.post("/initiate-payment", authUser, initiatePayment);
+// Endpoint to M-Pesa payment
+userRouter.post("/stkpush", authUser, getToken, stkPush);
+userRouter.post("/callback", mpesaCallback);
+userRouter.post(
+  "/poll:transactionId",
+  authUser,
+  getToken,
+  pollTransactionStatus
+);
 
 export default userRouter;
