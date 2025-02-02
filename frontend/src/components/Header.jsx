@@ -28,7 +28,7 @@ const Header = () => {
       <div className="md:w-1/2 relative">
         <img
           className="w-full md:absolute rounded-lg bottom-0 h-auto"
-          src={assets.header_img}
+          src={assets.contact_image}
           alt=""
         />
       </div>

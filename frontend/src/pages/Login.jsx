@@ -110,7 +110,7 @@ const Login = () => {
                 type="tel"
                 onChange={(e) => setPhone(e.target.value)}
                 value={phone}
-                placeholder="e.g. +254722222222 or 0722222222"
+                placeholder="e.g. 0722222222"
                 required
               />
             </div>

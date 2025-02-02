@@ -229,9 +229,9 @@ const payAppointment = async (req, res) => {
     }
 
     // Fetch the appointment details
-    const appointment = await appointmentModel.findById(appointmentId);
+    const appointmentData = await appointmentModel.findById(appointmentId);
 
-    if (!appointment || appointment.cancelled) {
+    if (!appointmentData || appointmentData.cancelled) {
       return res.status(404).json({
         success: false,
         message: "Appointment not found or has been cancelled.",
@@ -240,7 +240,7 @@ const payAppointment = async (req, res) => {
 
     // Attach required data to the request body for M-Pesa
     req.body.phone = phoneNumber; // Include the phone number
-    req.body.amount = appointment.amount; // Set the payment amount
+    req.body.amount = appointmentData.amount; // Set the payment amount
 
     // Use the getToken middleware to fetch an access token
     await getToken(req, res, async () => {
@@ -255,6 +255,12 @@ const payAppointment = async (req, res) => {
       details: error.message,
     });
   }
+};
+
+//API to verify payment using mpesa
+const veryfiyMpesa = async (req, res) => {
+  try {
+  } catch (error) {}
 };
 
 export {

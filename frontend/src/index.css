@@ -7,9 +7,6 @@
   font-family: outfit;
 }
 
-.active hr {
-  @apply block;
-}
 * {
   scrollbar-width: none; /* Firefox */
 }
